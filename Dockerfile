@@ -1,6 +1,7 @@
 # -------------------------
 # 1️⃣ Dependencies stage
 # -------------------------
+    
 FROM node:20-alpine AS deps
 
 WORKDIR /app
