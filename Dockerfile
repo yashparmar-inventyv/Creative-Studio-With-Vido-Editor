@@ -8,7 +8,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-
 # -------------------------
 # 2️⃣ Build stage
 # -------------------------
