@@ -1,44 +1,53 @@
-name: Creative Studio CI/CD
+name: Creative Studio CI
 
 on:
   push:
     branches:
       - master
-      
+
 env:
   REGISTRY: demo.goharbor.io
   PROJECT: creative-studio
   IMAGE_NAME: creative-studio
-  NAMESPACE: creative-studio
-  DEPLOYMENT_NAME: creative-studio
-  CONTAINER_NAME: creative-studio
 
 jobs:
   build:
     runs-on: self-hosted
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
-      - run: |
+      - name: Login to Harbor
+        run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $REGISTRY \
             -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
 
-      - run: |
-          docker build -t $REGISTRY/$PROJECT/$IMAGE_NAME:${GITHUB_SHA} .
+      - name: Build Docker image
+        run: |
+          docker build -t $REGISTRY/$PROJECT/$IMAGE_NAME:${IMAGE_TAG} .
 
-      - run: |
-          docker push $REGISTRY/$PROJECT/$IMAGE_NAME:${GITHUB_SHA}
+      - name: Push Docker image
+        run: |
+          docker push $REGISTRY/$PROJECT/$IMAGE_NAME:${IMAGE_TAG}
 
-  deploy:
-    runs-on: self-hosted
-    needs: build
-    steps:
-      - run: |
-          kubectl set image deployment/$DEPLOYMENT_NAME \
-            $CONTAINER_NAME=$REGISTRY/$PROJECT/$IMAGE_NAME:${GITHUB_SHA} \
-            -n $NAMESPACE
+      - name: Get image digest
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$PROJECT/$IMAGE_NAME:${IMAGE_TAG} | cut -d'@' -f2)
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+          echo "Digest is $DIGEST"
 
-      - run: |
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE
+      - name: Trigger CD pipeline
+        run: |
+          curl -X POST https://api.github.com/repos/DenisRuparel/Timoni-implementation---DevOps/dispatches \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.REPO_TOKEN }}" \
+          -d '{
+            "event_type": "update-image",
+            "client_payload": {
+              "image_digest": "'${IMAGE_DIGEST}'"
+            }
+          }'
