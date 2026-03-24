@@ -1,4 +1,4 @@
-name: Creative Studio CI
+name: Creative Studio CI Pipeline
 
 on:
   push:
