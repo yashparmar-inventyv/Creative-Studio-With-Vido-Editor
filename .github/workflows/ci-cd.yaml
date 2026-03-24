@@ -1,4 +1,4 @@
-name: Creative Studio CI Pipeline
+name: Creative Studio CI Pipeline with GitHub Actions
 
 on:
   push:
